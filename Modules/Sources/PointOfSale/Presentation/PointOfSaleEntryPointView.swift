@@ -30,6 +30,7 @@ public struct PointOfSaleEntryPointView: View {
     @State private var bookingsModel: POSBookingsModel?
     @State private var posEntryPointController: POSEntryPointController
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dismiss) private var dismiss
 
     private let onPointOfSaleModeActiveStateChange: ((Bool) -> Void)
     private let itemsController: PointOfSaleItemsControllerProtocol
@@ -50,6 +51,7 @@ public struct PointOfSaleEntryPointView: View {
     private let catalogSyncCoordinator: POSCatalogSyncCoordinatorProtocol?
     private let isLocalCatalogEligible: Bool
     private let isBookingsEligible: Bool
+    private let permissionProvider: POSPermissionProviding
 
     /// periphery: ignore - public in preparation of move to POS module
     public init(siteID: Int64,
@@ -164,17 +166,25 @@ public struct PointOfSaleEntryPointView: View {
         self.catalogSyncCoordinator = catalogSyncCoordinator
         self.isLocalCatalogEligible = isLocalCatalogEligible
         self.isBookingsEligible = isBookingsEligible
+        self.permissionProvider = services.permissions
     }
 
     public var body: some View {
-        Group {
-            if let posModel {
-                PointOfSaleDashboardView()
-                    .environment(posModel)
-                    .environment(posModel.paymentModel)
-            } else {
-                PointOfSaleLoadingView()
+        ZStack {
+            Group {
+                if let posModel {
+                    PointOfSaleDashboardView()
+                        .environment(posModel)
+                        .environment(posModel.paymentModel)
+                } else {
+                    PointOfSaleLoadingView()
+                }
             }
+
+            POSLockScreenOverlay(
+                permissionProvider: permissionProvider,
+                onLogout: { dismiss() }
+            )
         }
         .task {
             // We create the posModel in a task, not init, to avoid creating multiple copies during the view's lifecycle.
@@ -206,6 +216,7 @@ public struct PointOfSaleEntryPointView: View {
         .environment(\.posExternalNavigation, services.externalNavigation)
         .environment(\.posExternalViews, services.externalViews)
         .environment(\.posBookingsEligible, isBookingsEligible)
+        .environment(\.posPermissions, permissionProvider)
         .environmentObject(posModalManager)
         .environmentObject(posSheetManager)
         .environmentObject(posCoverManager)

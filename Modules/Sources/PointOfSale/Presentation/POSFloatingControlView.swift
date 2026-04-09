@@ -16,6 +16,7 @@ struct POSFloatingControlView: View {
     @State private var showOrders: Bool = false
     @State private var showBookings: Bool = false
     @Environment(\.posBookingsEligible) private var isBookingsEligible
+    @Environment(\.posPermissions) private var permissions
 
     init(showExitPOSModal: Binding<Bool>,
          showSupport: Binding<Bool>,
@@ -129,7 +130,23 @@ private extension POSFloatingControlView {
                     )
                 }
             }
+
+            if isRolesEnabled {
+                Button {
+                    permissions.lock()
+                } label: {
+                    Label(
+                        title: { Text(Localization.lockPOS) },
+                        icon: { Image(systemName: "lock") }
+                    )
+                }
+            }
         }
+    }
+
+    private var isRolesEnabled: Bool {
+        featureFlags.isFeatureFlagEnabled(.pointOfSaleLocalRoles) ||
+        featureFlags.isFeatureFlagEnabled(.pointOfSaleRemoteRoles)
     }
 }
 
@@ -189,6 +206,12 @@ private extension POSFloatingControlView {
             "pointOfSale.floatingButtons.settings.button.title",
             value: "Settings",
             comment: "The title of the menu button to access Point of Sale settings."
+        )
+
+        static let lockPOS = NSLocalizedString(
+            "pointOfSale.floatingButtons.lock.button.title",
+            value: "Lock POS",
+            comment: "The title of the menu button to lock Point of Sale, requiring PIN entry to continue."
         )
     }
 }
