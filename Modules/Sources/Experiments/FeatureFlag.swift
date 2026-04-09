@@ -209,6 +209,14 @@ public enum FeatureFlag: Int, CaseIterable {
     ///
     case pointOfSaleBookings
 
+    /// Enables local POS roles with on-device PIN management
+    ///
+    case pointOfSaleLocalRoles
+
+    /// Enables remote POS roles with server-backed PIN auth and Application Passwords
+    ///
+    case pointOfSaleRemoteRoles
+
     /// Enables self driven push token registration for users authenticated with WPCom
     ///
     case selfDrivenPushTokenWPCom
