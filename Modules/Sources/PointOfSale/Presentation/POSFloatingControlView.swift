@@ -15,6 +15,8 @@ struct POSFloatingControlView: View {
     @State private var showBarcodeScanningModal: Bool = false
     @State private var showOrders: Bool = false
     @State private var showBookings: Bool = false
+    @State private var showSettingsOverride: Bool = false
+    @State private var settingsOverrideState: POSManagerOverrideState = .awaitingPIN
     @Environment(\.posBookingsEligible) private var isBookingsEligible
     @Environment(\.posPermissions) private var permissions
 
@@ -68,6 +70,21 @@ struct POSFloatingControlView: View {
             POSBookingsContainerView(isPresented: $showBookings)
                 .environment(\.floatingControlAreaSize, .zero)
         }
+        .posModal(isPresented: $showSettingsOverride) {
+            POSManagerOverrideView(
+                actionDescription: Localization.settingsOverrideDescription,
+                capability: POSCapability.posManageSettings.rawValue,
+                overrideState: $settingsOverrideState,
+                onPINEntered: { pin in
+                    Task { @MainActor in
+                        await handleSettingsOverridePIN(pin)
+                    }
+                },
+                onCancelled: {
+                    showSettingsOverride = false
+                }
+            )
+        }
         .onChange(of: showBookings) { _, isShowing in
             if isShowing {
                 posModel.paymentModel.deactivate()
@@ -101,7 +118,7 @@ private extension POSFloatingControlView {
         if horizontalSizeClass == .regular {
             Button {
                 analytics.track(.pointOfSaleSettingsMenuItemTapped)
-                showSettings = true
+                requestPermissionForSettings()
             } label: {
                 Label(
                     title: { Text(Localization.settings) },
@@ -147,8 +164,45 @@ private extension POSFloatingControlView {
     }
 
     private var isRolesEnabled: Bool {
-        featureFlags.isFeatureFlagEnabled(.pointOfSaleLocalRoles) ||
-        featureFlags.isFeatureFlagEnabled(.pointOfSaleRemoteRoles)
+        let flagEnabled = featureFlags.isFeatureFlagEnabled(.pointOfSaleLocalRoles) ||
+            featureFlags.isFeatureFlagEnabled(.pointOfSaleRemoteRoles)
+        return flagEnabled && permissions.hasAnyPINs
+    }
+}
+
+// MARK: - Permission Checks
+
+private extension POSFloatingControlView {
+    func requestPermissionForSettings() {
+        guard isRolesEnabled else {
+            showSettings = true
+            return
+        }
+        switch permissions.checkPermission(.posManageSettings) {
+        case .allowed:
+            showSettings = true
+        case .requiresOverride:
+            settingsOverrideState = .awaitingPIN
+            showSettingsOverride = true
+        }
+    }
+
+    @MainActor
+    func handleSettingsOverridePIN(_ pin: String) async {
+        do {
+            _ = try await permissions.requestManagerApproval(
+                managerPIN: pin,
+                for: .posManageSettings,
+                orderID: nil
+            )
+            settingsOverrideState = .approved
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                showSettingsOverride = false
+                showSettings = true
+            }
+        } catch {
+            settingsOverrideState = .error(message: error.posOverrideErrorMessage)
+        }
     }
 }
 
@@ -214,6 +268,12 @@ private extension POSFloatingControlView {
             "pointOfSale.floatingButtons.lock.button.title",
             value: "Lock POS",
             comment: "The title of the menu button to lock Point of Sale, requiring PIN entry to continue."
+        )
+
+        static let settingsOverrideDescription = NSLocalizedString(
+            "pointOfSale.floatingButtons.settingsOverride.description",
+            value: "Access POS settings",
+            comment: "Description shown in the manager override modal when settings access requires approval."
         )
     }
 }
