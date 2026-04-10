@@ -147,7 +147,7 @@ struct PointOfSaleDashboardView: View {
         }
         .posFullScreenCover(isPresented: $showSettings) {
             POSSettingsView(settingsController: posModel.settingsController,
-                            pinService: POSPINService())
+                            staffSettingsMode: .local(pinService: POSPINService()))
         }
         .onChange(of: showSettings) { oldValue, newValue in
             guard !newValue, oldValue else { return }
