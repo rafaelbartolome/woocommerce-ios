@@ -855,7 +855,8 @@ final class POSConfigurablePreviewOrderListController: POSSearchingOrderListCont
     func clearRefundSelection() {}
     func toggleAllRefundItemsSelection() {}
     func preparePOSRefundReviewData() -> POSRefundReviewData? { nil }
-    func processRefund(reason: String?) async throws {}
+    @MainActor
+    func processRefund(reason: String?, approvalToken: String?) async throws {}
     func loadOrderRefunds() async {}
 }
 
@@ -914,7 +915,11 @@ final class POSRefundsServicePreview: POSRefundsServiceProtocol {
         return POSRefundAmounts(subtotal: subtotal, tax: tax)
     }
 
-    func createRefund(orderID: Int64, items: [Yosemite.POSRefundableItem], reason: String?, isAutomaticRefund: Bool) async throws {}
+    func createRefund(orderID: Int64,
+                      items: [Yosemite.POSRefundableItem],
+                      reason: String?,
+                      isAutomaticRefund: Bool,
+                      approvalToken: String?) async throws {}
 
     func loadOrderRefunds(for order: Yosemite.POSOrder) async throws -> [Yosemite.POSOrderRefund] { [] }
 }

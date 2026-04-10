@@ -113,10 +113,12 @@ struct ItemListView: View {
         .posModal(isPresented: $showCouponManagerOverride) {
             POSManagerOverrideView(
                 actionDescription: Localization.couponOverrideDescription,
-                capability: "woocommerce_apply_discounts",
+                capability: POSCapability.applyDiscounts.rawValue,
                 overrideState: $couponManagerOverrideState,
                 onPINEntered: { pin in
-                    handleCouponOverridePIN(pin)
+                    Task { @MainActor in
+                        await handleCouponOverridePIN(pin)
+                    }
                 },
                 onCancelled: {
                     showCouponManagerOverride = false
@@ -452,7 +454,7 @@ private extension ItemListView {
 
 private extension ItemListView {
     func requestPermissionForCouponCreation() {
-        switch permissions.checkPermission("woocommerce_apply_discounts") {
+        switch permissions.checkPermission(.applyDiscounts) {
         case .allowed:
             showCouponCreationModal = true
         case .requiresOverride:
@@ -461,20 +463,28 @@ private extension ItemListView {
         }
     }
 
-    func handleCouponOverridePIN(_ pin: String) {
-        guard let localProvider = permissions as? LocalPOSPermissionProvider else {
-            couponManagerOverrideState = .error(message: Localization.invalidPIN)
-            return
-        }
-        if localProvider.verifyManagerPIN(pin) {
+    @MainActor
+    func handleCouponOverridePIN(_ pin: String) async {
+        do {
+            _ = try await permissions.requestManagerApproval(
+                managerPIN: pin,
+                for: .applyDiscounts,
+                orderID: nil
+            )
             couponManagerOverrideState = .approved
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 showCouponManagerOverride = false
                 showCouponCreationModal = true
             }
-        } else {
-            couponManagerOverrideState = .error(message: Localization.invalidPIN)
+        } catch {
+            couponManagerOverrideState = .error(message: error.overrideErrorMessage ?? Localization.invalidPIN)
         }
+    }
+}
+
+private extension Error {
+    var overrideErrorMessage: String? {
+        (self as? LocalizedError)?.errorDescription
     }
 }
 

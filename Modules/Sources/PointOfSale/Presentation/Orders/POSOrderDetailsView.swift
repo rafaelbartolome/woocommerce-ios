@@ -28,6 +28,7 @@ struct POSOrderDetailsView: View {
     @State private var showManagerOverride: Bool = false
     @State private var managerOverrideState: POSManagerOverrideState = .awaitingPIN
     @State private var pendingOverrideAction: (() -> Void)?
+    @State private var approvedRefundToken: String?
 
     private var shouldShowBackButton: Bool {
         horizontalSizeClass == .compact
@@ -109,6 +110,7 @@ struct POSOrderDetailsView: View {
                 analytics.track(event: WooAnalyticsEvent.PointOfSale.refundFlowAborted(step: step))
             }
             orderListModel.ordersController.clearRefundSelection()
+            approvedRefundToken = nil
         }) { state in
             POSRefundModalContentView(
                 state: state,
@@ -126,6 +128,7 @@ struct POSOrderDetailsView: View {
                 showsItemSelection: flow != .bookings,
                 onRefundSuccess: onRefundSuccess,
                 onRefundFailure: onRefundFailure,
+                approvalToken: approvedRefundToken,
                 errorStrings: .init(
                     loadTitle: Localization.loadRefundErrorTitle,
                     loadSubtitle: Localization.loadRefundErrorSubtitle,
@@ -150,7 +153,9 @@ struct POSOrderDetailsView: View {
                 capability: "woocommerce_refund_orders",
                 overrideState: $managerOverrideState,
                 onPINEntered: { pin in
-                    handleManagerOverridePIN(pin)
+                    Task { @MainActor in
+                        await handleManagerOverridePIN(pin)
+                    }
                 },
                 onCancelled: {
                     showManagerOverride = false
@@ -513,6 +518,7 @@ private extension POSOrderDetailsView {
     func requestPermissionForRefund() {
         switch permissions.checkPermission("woocommerce_refund_orders") {
         case .allowed:
+            approvedRefundToken = nil
             initiateRefundFlow()
         case .requiresOverride:
             pendingOverrideAction = { [self] in
@@ -523,20 +529,21 @@ private extension POSOrderDetailsView {
         }
     }
 
-    func handleManagerOverridePIN(_ pin: String) {
-        guard let localProvider = permissions as? LocalPOSPermissionProvider else {
-            managerOverrideState = .error(message: Localization.invalidPIN)
-            return
-        }
-        if localProvider.verifyManagerPIN(pin) {
+    func handleManagerOverridePIN(_ pin: String) async {
+        do {
+            approvedRefundToken = try await permissions.requestManagerApproval(
+                managerPIN: pin,
+                for: .refundOrders,
+                orderID: order.id
+            )
             managerOverrideState = .approved
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 showManagerOverride = false
                 pendingOverrideAction?()
                 pendingOverrideAction = nil
             }
-        } else {
-            managerOverrideState = .error(message: Localization.invalidPIN)
+        } catch {
+            managerOverrideState = .error(message: error.overrideErrorMessage ?? Localization.invalidPIN)
         }
     }
 }
@@ -578,6 +585,12 @@ private extension POSOrderDetailsView {
             return
         }
         refundModalState = .review(reviewData)
+    }
+}
+
+private extension Error {
+    var overrideErrorMessage: String? {
+        (self as? LocalizedError)?.errorDescription
     }
 }
 
