@@ -182,8 +182,7 @@ public struct PointOfSaleEntryPointView: View {
             }
 
             POSLockScreenOverlay(
-                permissionProvider: permissionProvider,
-                onLogout: { dismiss() }
+                permissionProvider: permissionProvider
             )
         }
         .task {
