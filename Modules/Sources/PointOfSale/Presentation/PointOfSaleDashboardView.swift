@@ -6,6 +6,7 @@ struct PointOfSaleDashboardView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.posAnalytics) private var analytics
     @Environment(\.posExternalViews) private var externalViews
+    @Environment(\.posFeatureFlags) private var featureFlags
     @Environment(\.dismiss) private var dismiss
 
     @State private var showExitPOSModal: Bool = false
@@ -19,6 +20,17 @@ struct PointOfSaleDashboardView: View {
 
     private var viewStateCoordinator: PointOfSaleViewStateCoordinator {
         posModel.viewStateCoordinatorForView
+    }
+
+    private var currentStaffSettingsMode: POSStaffSettingsMode {
+        if featureFlags.isFeatureFlagEnabled(.pointOfSaleRemoteRoles) {
+            return .remote(
+                staffMembers: [],
+                manageURL: URL(string: "https://example.com/wp-admin")!
+            )
+        } else {
+            return .local(pinService: POSPINService())
+        }
     }
 
     private var itemsViewState: ItemsViewState {
@@ -147,7 +159,7 @@ struct PointOfSaleDashboardView: View {
         }
         .posFullScreenCover(isPresented: $showSettings) {
             POSSettingsView(settingsController: posModel.settingsController,
-                            staffSettingsMode: .local(pinService: POSPINService()))
+                            staffSettingsMode: currentStaffSettingsMode)
         }
         .onChange(of: showSettings) { oldValue, newValue in
             guard !newValue, oldValue else { return }
