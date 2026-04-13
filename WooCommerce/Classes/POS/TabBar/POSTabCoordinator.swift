@@ -276,6 +276,11 @@ private extension POSTabCoordinator {
                 let isBookingsEligible = storesManager.sessionManager.defaultSite
                     .map { CIABEligibilityChecker().isSiteCIAB($0) } ?? false
 
+                let staffSettingsMode = self.createStaffSettingsMode(
+                    siteID: siteID,
+                    stores: storesManager
+                )
+
                 let posView = PointOfSaleEntryPointView(
                     siteID: siteID,
                     itemFetchStrategyFactory: createItemFetchStrategyFactory(isLocalCatalogEnabled: isLocalCatalogEligible),
@@ -312,7 +317,8 @@ private extension POSTabCoordinator {
                     catalogSyncCoordinator: catalogSyncCoordinator,
                     isLocalCatalogEligible: isLocalCatalogEligible,
                     services: serviceAdaptor,
-                    itemProvider: itemProvider
+                    itemProvider: itemProvider,
+                    staffSettingsMode: staffSettingsMode
                 )
 
                 let hostingController = UIHostingController(rootView: posView)
@@ -324,6 +330,45 @@ private extension POSTabCoordinator {
 }
 
 private extension POSTabCoordinator {
+    func createStaffSettingsMode(siteID: Int64, stores: StoresManager) -> POSStaffSettingsMode? {
+        let featureFlagService = ServiceLocator.featureFlagService
+        if featureFlagService.isFeatureFlagEnabled(.pointOfSaleRemoteRoles) {
+            let siteURL = stores.sessionManager.defaultSite?.url ?? ""
+            let manageURL = URL(string: "\(siteURL)/wp-admin/admin.php?page=wc-settings&tab=point-of-sale&section=staff")
+                ?? URL(string: "about:blank")!
+            return .remote(
+                loadStaff: {
+                    try await withCheckedThrowingContinuation { continuation in
+                        let action = POSAuthAction.fetchStaffStatus(siteID: siteID) { result in
+                            switch result {
+                            case .success(let users):
+                                let members = users.map { user in
+                                    StaffMemberInfo(
+                                        id: user.userID,
+                                        displayName: user.displayName,
+                                        role: user.role,
+                                        hasPIN: user.hasPIN
+                                    )
+                                }
+                                continuation.resume(returning: members)
+                            case .failure(let error):
+                                continuation.resume(throwing: error)
+                            }
+                        }
+                        Task { @MainActor in
+                            stores.dispatch(action)
+                        }
+                    }
+                },
+                manageURL: manageURL
+            )
+        } else if featureFlagService.isFeatureFlagEnabled(.pointOfSaleLocalRoles) {
+            return .local(pinService: POSPINService())
+        } else {
+            return nil
+        }
+    }
+
     func updateDefaultConfigurationForPointOfSale(_ isPointOfSaleActive: Bool) {
         updateInAppNotifications(isPointOfSaleActive)
         updateTrackEventPrefix(isPointOfSaleActive)

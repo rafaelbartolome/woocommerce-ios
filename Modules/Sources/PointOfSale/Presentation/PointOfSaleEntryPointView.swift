@@ -52,6 +52,7 @@ public struct PointOfSaleEntryPointView: View {
     private let isLocalCatalogEligible: Bool
     private let isBookingsEligible: Bool
     private let permissionProvider: POSPermissionProviding
+    private let staffSettingsMode: POSStaffSettingsMode?
 
     /// periphery: ignore - public in preparation of move to POS module
     public init(siteID: Int64,
@@ -80,7 +81,8 @@ public struct PointOfSaleEntryPointView: View {
          catalogSyncCoordinator: POSCatalogSyncCoordinatorProtocol?,
          isLocalCatalogEligible: Bool,
          services: POSDependencyProviding,
-         itemProvider: PointOfSaleItemServiceProtocol? = nil) {
+         itemProvider: PointOfSaleItemServiceProtocol? = nil,
+         staffSettingsMode: POSStaffSettingsMode? = nil) {
         self.onPointOfSaleModeActiveStateChange = onPointOfSaleModeActiveStateChange
 
         let selectedItemProvider = itemProvider ?? PointOfSaleItemService(currencySettings: services.currency.currencySettings)
@@ -167,6 +169,7 @@ public struct PointOfSaleEntryPointView: View {
         self.isLocalCatalogEligible = isLocalCatalogEligible
         self.isBookingsEligible = isBookingsEligible
         self.permissionProvider = services.permissions
+        self.staffSettingsMode = staffSettingsMode
     }
 
     public var body: some View {
@@ -216,6 +219,7 @@ public struct PointOfSaleEntryPointView: View {
         .environment(\.posExternalViews, services.externalViews)
         .environment(\.posBookingsEligible, isBookingsEligible)
         .environment(\.posPermissions, permissionProvider)
+        .environment(\.posStaffSettingsMode, staffSettingsMode)
         .environmentObject(posModalManager)
         .environmentObject(posSheetManager)
         .environmentObject(posCoverManager)
