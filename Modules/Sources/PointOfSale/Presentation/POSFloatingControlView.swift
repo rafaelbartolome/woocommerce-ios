@@ -70,24 +70,7 @@ struct POSFloatingControlView: View {
             POSBookingsContainerView(isPresented: $showBookings)
                 .environment(\.floatingControlAreaSize, .zero)
         }
-        .posModal(isPresented: $overrideHandler.isShowingOverride) {
-            POSManagerOverrideView(
-                actionDescription: overrideHandler.actionDescription,
-                capability: overrideHandler.activeCapability ?? "",
-                overrideState: Binding(
-                    get: { overrideHandler.overrideState },
-                    set: { _ in }
-                ),
-                onPINEntered: { pin in
-                    Task { @MainActor in
-                        await overrideHandler.handlePINEntered(pin, permissions: permissions)
-                    }
-                },
-                onCancelled: {
-                    overrideHandler.cancel()
-                }
-            )
-        }
+        .posManagerOverrideModal(handler: overrideHandler, permissions: permissions)
         .onChange(of: showBookings) { _, isShowing in
             if isShowing {
                 posModel.paymentModel.deactivate()
