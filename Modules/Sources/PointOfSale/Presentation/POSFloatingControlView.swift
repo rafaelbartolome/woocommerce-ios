@@ -196,7 +196,7 @@ private extension POSFloatingControlView {
             return
         }
         overrideHandler.requestPermission(
-            for: .posEditSettings,
+            for: .editPOSSettings,
             actionDescription: Localization.exitOverrideDescription,
             permissions: permissions,
             onApproved: { _ in showExitPOSModal = true }
@@ -209,7 +209,7 @@ private extension POSFloatingControlView {
             return
         }
         overrideHandler.requestPermission(
-            for: .posViewSettings,
+            for: .viewPOSSettings,
             actionDescription: Localization.settingsOverrideDescription,
             permissions: permissions,
             onApproved: { _ in showSettings = true }
