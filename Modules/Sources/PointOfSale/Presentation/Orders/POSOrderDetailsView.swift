@@ -497,11 +497,6 @@ private extension POSOrderDetailsView {
 
 private extension POSOrderDetailsView {
     func requestPermissionForRefund() {
-        guard permissions.hasAnyPINs else {
-            approvedRefundToken = nil
-            initiateRefundFlow()
-            return
-        }
         overrideHandler.requestPermission(
             for: .refundShopOrders,
             actionDescription: Localization.refundOverrideDescription(order.number),
