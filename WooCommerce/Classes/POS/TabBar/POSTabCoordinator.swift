@@ -228,6 +228,15 @@ private extension POSTabCoordinator {
                                               selectedSite: defaultSitePublisher,
                                               appPasswordSupportState: isAppPasswordSupported)
 
+            let sunsetWarningChecker = POSSunsetWarningChecker(
+                systemStatusService: POSSystemStatusService(
+                    credentials: credentials,
+                    selectedSite: defaultSitePublisher,
+                    appPasswordSupportState: isAppPasswordSupported,
+                    storageManager: storageManager
+                )
+            )
+
             let serviceAdaptor = POSServiceLocatorAdaptor(posNetwork: posNetwork)
             let collectPaymentAnalyticsAdaptor = POSCollectOrderPaymentAnalyticsAdaptor(analytics: serviceAdaptor.analytics)
 
@@ -326,6 +335,7 @@ private extension POSTabCoordinator {
                 grdbManager: grdbManager,
                 catalogSyncCoordinator: catalogSyncCoordinator,
                 isLocalCatalogEligible: isLocalCatalogEligible,
+                sunsetWarningChecker: sunsetWarningChecker,
                 services: serviceAdaptor,
                 itemProvider: itemProvider,
                 staffSettingsMode: staffSettingsMode
