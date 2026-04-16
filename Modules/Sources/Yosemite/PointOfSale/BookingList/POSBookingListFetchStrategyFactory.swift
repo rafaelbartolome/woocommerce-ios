@@ -2,6 +2,7 @@ import Foundation
 import class Networking.AlamofireNetwork
 import class Networking.BookingsRemote
 import class Networking.OrdersRemote
+import protocol Networking.Network
 import class WooFoundationCore.CurrencyFormatter
 import struct Combine.AnyPublisher
 import struct NetworkingCore.JetpackSite
@@ -18,16 +19,11 @@ public final class POSBookingListFetchStrategyFactory: POSBookingListFetchStrate
     public let bookingService: POSBookingServiceProtocol
 
     public init(siteID: Int64,
-                credentials: Credentials?,
-                selectedSite: AnyPublisher<JetpackSite?, Never>,
-                appPasswordSupportState: AnyPublisher<Bool, Never>,
+                network: Network,
                 currencyFormatter: CurrencyFormatter,
                 siteSettings: [SiteSetting] = []) {
         self.siteID = siteID
         self.store = POSBookingInMemoryStore()
-        let network = AlamofireNetwork(credentials: credentials,
-                                       selectedSite: selectedSite,
-                                       appPasswordSupportState: appPasswordSupportState)
         let bookingsRemote = BookingsRemote(network: network)
         let ordersRemote = OrdersRemote(network: network)
         self.bookingService = POSBookingService(
@@ -37,6 +33,21 @@ public final class POSBookingListFetchStrategyFactory: POSBookingListFetchStrate
             currencyFormatter: currencyFormatter,
             siteSettings: siteSettings
         )
+    }
+
+    public convenience init(siteID: Int64,
+                credentials: Credentials?,
+                selectedSite: AnyPublisher<JetpackSite?, Never>,
+                appPasswordSupportState: AnyPublisher<Bool, Never>,
+                currencyFormatter: CurrencyFormatter,
+                siteSettings: [SiteSetting] = []) {
+        let network = AlamofireNetwork(credentials: credentials,
+                                       selectedSite: selectedSite,
+                                       appPasswordSupportState: appPasswordSupportState)
+        self.init(siteID: siteID,
+                  network: network,
+                  currencyFormatter: currencyFormatter,
+                  siteSettings: siteSettings)
     }
 
     public func defaultStrategy(filters: BookingFilters? = nil) -> POSBookingListFetchStrategy {
