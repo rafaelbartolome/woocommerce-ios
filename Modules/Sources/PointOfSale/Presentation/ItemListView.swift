@@ -64,6 +64,7 @@ struct ItemListView: View {
 
     @Environment(\.posPermissions) private var permissions
     @State private var showCouponCreationModal: Bool = false
+    @State private var couponApprovalToken: String?
     @State private var couponOverrideHandler = POSManagerOverrideHandler()
 
     var body: some View {
@@ -102,6 +103,7 @@ struct ItemListView: View {
         .background(Color.posSurface)
         .accessibilityElement(children: .contain)
         .posCouponCreationSheet(isPresented: $showCouponCreationModal,
+                                approvalToken: couponApprovalToken,
                                 currencySettings: currencyProvider.currencySettings,
                                 onSuccess: { couponItem in
             Task { @MainActor in
@@ -475,7 +477,10 @@ private extension ItemListView {
             for: .publishCoupons,
             actionDescription: Localization.couponOverrideDescription,
             permissions: permissions,
-            onApproved: { _ in showCouponCreationModal = true }
+            onApproved: { token in
+                couponApprovalToken = token
+                showCouponCreationModal = true
+            }
         )
     }
 }
