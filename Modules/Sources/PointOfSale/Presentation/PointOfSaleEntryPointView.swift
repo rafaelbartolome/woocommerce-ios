@@ -28,6 +28,7 @@ public struct PointOfSaleEntryPointView: View {
     @StateObject private var posModalManager = POSModalManager()
     @StateObject private var posSheetManager = POSSheetManager()
     @StateObject private var posCoverManager = POSFullScreenCoverManager()
+    @StateObject private var permissionErrorReporter = POSPermissionErrorReporter()
     @State private var orderListModel: POSOrderListModel
     @State private var bookingsModel: POSBookingsModel?
     @State private var posEntryPointController: POSEntryPointController
@@ -242,6 +243,8 @@ public struct PointOfSaleEntryPointView: View {
         .environment(\.posBookingsEligible, isBookingsEligible)
         .environment(\.posPermissions, permissionProvider)
         .environment(\.posStaffSettingsMode, staffSettingsMode)
+        .environment(\.posPermissionErrorReporter, permissionErrorReporter)
+        .posPermissionErrorAlert(error: $permissionErrorReporter.currentError)
         .environmentObject(posModalManager)
         .environmentObject(posSheetManager)
         .environmentObject(posCoverManager)
