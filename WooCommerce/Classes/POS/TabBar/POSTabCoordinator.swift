@@ -376,7 +376,7 @@ private extension POSTabCoordinator {
 
         // When POS exits, clear the lock state so it doesn't auto-reopen next launch.
         if !isPointOfSaleActive {
-            UserDefaults.standard.set(false, forKey: "com.woocommerce.pos.isLocked")
+            UserDefaults.standard.set(false, forKey: POSLockStateKey.isLocked)
         }
     }
 
