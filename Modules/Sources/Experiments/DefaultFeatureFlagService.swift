@@ -102,7 +102,7 @@ public struct DefaultFeatureFlagService: FeatureFlagService {
         case .pointOfSaleLocalRoles:
             return false
         case .pointOfSaleRemoteRoles:
-            return false
+            return true
         case .selfDrivenPushTokenWPCom:
             return false
         case .selfDrivenPushTokenAppPasswords:
