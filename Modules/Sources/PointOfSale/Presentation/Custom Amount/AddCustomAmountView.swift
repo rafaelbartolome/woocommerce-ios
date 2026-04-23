@@ -6,7 +6,10 @@ struct AddCustomAmountView: View {
     let onSubmit: (POSCustomAmountInput) -> Void
 
     @State private var viewModel: AddCustomAmountFormViewModel
-    @FocusState private var isAmountFieldFocused: Bool
+    @State private var amountDisplayText: String = ""
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case amount, name }
 
     init(isPresented: Binding<Bool>,
          currencySettings: CurrencySettings,
@@ -29,13 +32,16 @@ struct AddCustomAmountView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: POSSpacing.xLarge) {
-                    amountField
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, POSSpacing.xxLarge)
+                    amountSection
+                        .padding(.top, POSSpacing.xLarge)
 
-                    taxesToggle
+                    Divider()
 
-                    nameField
+                    taxesRow
+
+                    Divider()
+
+                    nameSection
 
                     Spacer(minLength: POSSpacing.xxLarge)
                 }
@@ -48,51 +54,56 @@ struct AddCustomAmountView: View {
                 .padding(.vertical, POSPadding.medium)
         }
         .background(Color.posSurfaceBright.ignoresSafeArea())
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(Localization.doneButton) {
-                    isAmountFieldFocused = false
-                }
-            }
-        }
     }
 
-    private var amountField: some View {
-        VStack(spacing: POSSpacing.small) {
+    private var amountSection: some View {
+        VStack(alignment: .leading, spacing: POSSpacing.small) {
             Text(Localization.amountLabel)
                 .font(.posBodyMediumRegular())
                 .foregroundColor(.posOnSurfaceVariantLowest)
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-            POSCashAmountTextField(
-                amount: $viewModel.amount,
-                isFocused: $isAmountFieldFocused,
-                sanitizer: viewModel.sanitizer,
-                onSubmit: submit
+            HStack(spacing: POSSpacing.xSmall) {
+                Text(viewModel.currencySymbol)
+                    .font(.posHeadingBold)
+                    .foregroundColor(viewModel.isAddEnabled ? .posOnSurface : .posOnSurfaceVariantLowest)
+
+                TextField(Localization.amountPlaceholder(symbol: viewModel.currencySymbol), text: $amountDisplayText)
+                    .font(.posHeadingBold)
+                    .foregroundColor(.posOnSurface)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .amount)
+                    .onChange(of: amountDisplayText) { oldValue, newValue in
+                        guard let sanitized = viewModel.sanitizer.sanitize(newValue) else {
+                            amountDisplayText = oldValue
+                            return
+                        }
+                        if sanitized != newValue {
+                            amountDisplayText = sanitized
+                        }
+                        viewModel.amount = sanitized
+                    }
+            }
+            .padding(POSPadding.large)
+            .background(
+                RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value)
+                    .stroke(focusedField == .amount ? Color.posPrimary : Color.posSurfaceContainerLowest, lineWidth: 2)
             )
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, POSPadding.large)
-            .background(Color.posSurfaceContainerLowest)
-            .clipShape(RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value))
             .contentShape(Rectangle())
-            .onTapGesture { isAmountFieldFocused = true }
+            .onTapGesture { focusedField = .amount }
         }
     }
 
-    private var taxesToggle: some View {
+    private var taxesRow: some View {
         Toggle(isOn: $viewModel.isTaxable) {
             Text(Localization.chargeTaxes)
                 .font(.posBodyLargeRegular())
                 .foregroundColor(.posOnSurface)
         }
         .tint(.posPrimary)
-        .padding(POSPadding.large)
-        .background(Color.posSurfaceContainerLowest)
-        .clipShape(RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value))
+        .padding(.vertical, POSPadding.small)
     }
 
-    private var nameField: some View {
+    private var nameSection: some View {
         VStack(alignment: .leading, spacing: POSSpacing.small) {
             Text(Localization.nameLabel)
                 .font(.posBodyMediumRegular())
@@ -101,13 +112,12 @@ struct AddCustomAmountView: View {
             TextField(Localization.namePlaceholder, text: $viewModel.name)
                 .font(.posBodyLargeRegular())
                 .foregroundColor(.posOnSurface)
-                .padding(POSPadding.large)
-                .background(Color.posSurfaceContainerLowest)
-                .clipShape(RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value))
+                .focused($focusedField, equals: .name)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.sentences)
                 .submitLabel(.done)
                 .onSubmit(submit)
+                .padding(.vertical, POSPadding.small)
         }
     }
 
@@ -154,10 +164,10 @@ private extension AddCustomAmountView {
             "pos.addCustomAmount.addButton",
             value: "Add custom amount",
             comment: "Primary button in the Point of Sale add custom amount form that adds the amount to the order.")
-        static let doneButton = NSLocalizedString(
-            "pos.addCustomAmount.keyboardDone",
-            value: "Done",
-            comment: "Toolbar button above the keyboard that dismisses it in the Point of Sale add custom amount form.")
+
+        static func amountPlaceholder(symbol: String) -> String {
+            "0"
+        }
     }
 }
 
