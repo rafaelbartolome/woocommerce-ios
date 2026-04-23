@@ -61,16 +61,12 @@ struct AddCustomAmountView: View {
                 .font(.posBodyMediumRegular())
                 .foregroundColor(.posOnSurfaceVariantLowest)
 
-            HStack(spacing: POSSpacing.xSmall) {
-                Text(viewModel.currencySymbol)
-                    .font(.posHeadingBold)
-                    .foregroundColor(.posOnSurface)
-
-                TextField("0", text: $amountDisplayText)
-                    .font(.posHeadingBold)
-                    .foregroundColor(.posOnSurface)
+            ZStack {
+                TextField("", text: $amountDisplayText)
                     .keyboardType(.decimalPad)
                     .focused($isAmountFocused)
+                    .opacity(0)
+                    .accessibilityHidden(true)
                     .onChange(of: amountDisplayText) { oldValue, newValue in
                         guard let sanitized = viewModel.sanitizer.sanitize(newValue) else {
                             amountDisplayText = oldValue
@@ -81,6 +77,17 @@ struct AddCustomAmountView: View {
                         }
                         viewModel.amount = sanitized
                     }
+
+                HStack(spacing: POSSpacing.xSmall) {
+                    Text(viewModel.currencySymbol)
+                        .font(.posHeadingBold)
+                        .foregroundColor(.posOnSurface)
+
+                    Text(amountDisplayText.isEmpty ? "0" : amountDisplayText)
+                        .font(.posHeadingBold)
+                        .foregroundColor(amountDisplayText.isEmpty ? .posOnSurfaceVariantLowest : .posOnSurface)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(POSPadding.large)
             .background(Color.posSurfaceContainerLowest)
