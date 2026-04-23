@@ -6,6 +6,7 @@ struct AddCustomAmountView: View {
     let onSubmit: (POSCustomAmountInput) -> Void
 
     @State private var viewModel: AddCustomAmountFormViewModel
+    @State private var amountDisplayText: String = ""
     @FocusState private var isAmountFocused: Bool
     @FocusState private var isNameFocused: Bool
 
@@ -60,18 +61,44 @@ struct AddCustomAmountView: View {
                 .font(.posBodyMediumRegular())
                 .foregroundColor(.posOnSurfaceVariantLowest)
 
-            POSCashAmountTextField(
-                amount: $viewModel.amount,
-                isFocused: $isAmountFocused,
-                sanitizer: viewModel.sanitizer,
-                onSubmit: submit
-            )
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, POSPadding.large)
+            HStack(spacing: POSSpacing.xSmall) {
+                Text(viewModel.currencySymbol)
+                    .font(.posHeadingBold)
+                    .foregroundColor(.posOnSurface)
+
+                TextField("0", text: $amountDisplayText)
+                    .font(.posHeadingBold)
+                    .foregroundColor(.posOnSurface)
+                    .keyboardType(.decimalPad)
+                    .focused($isAmountFocused)
+                    .onChange(of: amountDisplayText) { oldValue, newValue in
+                        guard let sanitized = viewModel.sanitizer.sanitize(newValue) else {
+                            amountDisplayText = oldValue
+                            return
+                        }
+                        if sanitized != newValue {
+                            amountDisplayText = sanitized
+                        }
+                        viewModel.amount = sanitized
+                    }
+            }
+            .padding(POSPadding.large)
             .background(Color.posSurfaceContainerLowest)
             .clipShape(RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value))
             .contentShape(Rectangle())
-            .onTapGesture { isAmountFocused = true }
+            .onTapGesture { focusAmountField() }
+        }
+    }
+
+    private func focusAmountField() {
+        // Dismiss a keyboard coming from the name field first; switching directly
+        // from the default keyboard leaves it docked instead of showing the
+        // decimal-pad popover.
+        if isNameFocused {
+            isNameFocused = false
+        }
+        DispatchQueue.main.async {
+            isAmountFocused = true
         }
     }
 
