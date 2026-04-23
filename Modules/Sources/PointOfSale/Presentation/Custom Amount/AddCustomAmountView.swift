@@ -20,7 +20,11 @@ struct AddCustomAmountView: View {
         VStack(spacing: 0) {
             POSPageHeaderView(
                 title: Localization.title,
-                backButtonConfiguration: .init(state: .enabled, action: { isPresented = false })
+                backButtonConfiguration: .init(
+                    state: .enabled,
+                    action: { isPresented = false },
+                    buttonIcon: "xmark"
+                )
             )
 
             ScrollView {
@@ -37,14 +41,20 @@ struct AddCustomAmountView: View {
                 }
                 .padding(.horizontal, POSHeaderLayoutConstants.sectionHorizontalPadding)
             }
+            .scrollDismissesKeyboard(.interactively)
 
             addButton
                 .padding(.horizontal, POSHeaderLayoutConstants.sectionHorizontalPadding)
                 .padding(.vertical, POSPadding.medium)
         }
         .background(Color.posSurfaceBright.ignoresSafeArea())
-        .onAppear {
-            isAmountFieldFocused = true
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(Localization.doneButton) {
+                    isAmountFieldFocused = false
+                }
+            }
         }
     }
 
@@ -65,6 +75,8 @@ struct AddCustomAmountView: View {
             .padding(.vertical, POSPadding.large)
             .background(Color.posSurfaceContainerLowest)
             .clipShape(RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value))
+            .contentShape(Rectangle())
+            .onTapGesture { isAmountFieldFocused = true }
         }
     }
 
@@ -142,6 +154,10 @@ private extension AddCustomAmountView {
             "pos.addCustomAmount.addButton",
             value: "Add custom amount",
             comment: "Primary button in the Point of Sale add custom amount form that adds the amount to the order.")
+        static let doneButton = NSLocalizedString(
+            "pos.addCustomAmount.keyboardDone",
+            value: "Done",
+            comment: "Toolbar button above the keyboard that dismisses it in the Point of Sale add custom amount form.")
     }
 }
 
