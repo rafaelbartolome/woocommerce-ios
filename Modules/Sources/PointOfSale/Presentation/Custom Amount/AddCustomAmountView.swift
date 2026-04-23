@@ -6,10 +6,8 @@ struct AddCustomAmountView: View {
     let onSubmit: (POSCustomAmountInput) -> Void
 
     @State private var viewModel: AddCustomAmountFormViewModel
-    @State private var amountDisplayText: String = ""
-    @FocusState private var focusedField: Field?
-
-    private enum Field { case amount, name }
+    @FocusState private var isAmountFocused: Bool
+    @FocusState private var isNameFocused: Bool
 
     init(isPresented: Binding<Bool>,
          currencySettings: CurrencySettings,
@@ -62,34 +60,18 @@ struct AddCustomAmountView: View {
                 .font(.posBodyMediumRegular())
                 .foregroundColor(.posOnSurfaceVariantLowest)
 
-            HStack(spacing: POSSpacing.xSmall) {
-                Text(viewModel.currencySymbol)
-                    .font(.posHeadingBold)
-                    .foregroundColor(viewModel.isAddEnabled ? .posOnSurface : .posOnSurfaceVariantLowest)
-
-                TextField(Localization.amountPlaceholder(symbol: viewModel.currencySymbol), text: $amountDisplayText)
-                    .font(.posHeadingBold)
-                    .foregroundColor(.posOnSurface)
-                    .keyboardType(.decimalPad)
-                    .focused($focusedField, equals: .amount)
-                    .onChange(of: amountDisplayText) { oldValue, newValue in
-                        guard let sanitized = viewModel.sanitizer.sanitize(newValue) else {
-                            amountDisplayText = oldValue
-                            return
-                        }
-                        if sanitized != newValue {
-                            amountDisplayText = sanitized
-                        }
-                        viewModel.amount = sanitized
-                    }
-            }
-            .padding(POSPadding.large)
-            .background(
-                RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value)
-                    .stroke(focusedField == .amount ? Color.posPrimary : Color.posSurfaceContainerLowest, lineWidth: 2)
+            POSCashAmountTextField(
+                amount: $viewModel.amount,
+                isFocused: $isAmountFocused,
+                sanitizer: viewModel.sanitizer,
+                onSubmit: submit
             )
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, POSPadding.large)
+            .background(Color.posSurfaceContainerLowest)
+            .clipShape(RoundedRectangle(cornerRadius: POSCornerRadiusStyle.large.value))
             .contentShape(Rectangle())
-            .onTapGesture { focusedField = .amount }
+            .onTapGesture { isAmountFocused = true }
         }
     }
 
@@ -112,7 +94,7 @@ struct AddCustomAmountView: View {
             TextField(Localization.namePlaceholder, text: $viewModel.name)
                 .font(.posBodyLargeRegular())
                 .foregroundColor(.posOnSurface)
-                .focused($focusedField, equals: .name)
+                .focused($isNameFocused)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.sentences)
                 .submitLabel(.done)
@@ -164,10 +146,6 @@ private extension AddCustomAmountView {
             "pos.addCustomAmount.addButton",
             value: "Add custom amount",
             comment: "Primary button in the Point of Sale add custom amount form that adds the amount to the order.")
-
-        static func amountPlaceholder(symbol: String) -> String {
-            "0"
-        }
     }
 }
 
